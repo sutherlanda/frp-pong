@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3ff18402ed2fe193c8814936df6bd3b7d5809158bd2d14a96065aa6696401f8e
+-- hash: 17964edc6075e53540dec180eeabd083e8b17c93407dd776ca47a705165aa734
 
 name:           frp-pong
 version:        0.1.0.0
@@ -27,7 +27,9 @@ source-repository head
 
 library
   exposed-modules:
-      Lib
+      Lib.Coroutine
+      Lib.Draw
+      Pong
       Sandbox
   other-modules:
       Paths_frp_pong
@@ -35,6 +37,7 @@ library
       src
   build-depends:
       base >=4.7 && <5
+    , containers
     , mtl
     , netwire
     , sdl2
@@ -51,6 +54,7 @@ executable frp-pong-exe
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , frp-pong
     , mtl
     , netwire
@@ -69,6 +73,7 @@ test-suite frp-pong-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , containers
     , frp-pong
     , mtl
     , netwire

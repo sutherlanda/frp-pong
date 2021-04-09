@@ -1,7 +1,6 @@
 module Main where
 
-import Lib
-import Sandbox
+import qualified Pong
 
 main :: IO ()
-main = sandbox
+main = Pong.run
