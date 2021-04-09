@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 17964edc6075e53540dec180eeabd083e8b17c93407dd776ca47a705165aa734
+-- hash: 8fbde8695fc1f68c52e7c730c704e04b297c78fd9d6e51101cdb1329b6ade609
 
 name:           frp-pong
 version:        0.1.0.0
@@ -28,7 +28,6 @@ source-repository head
 library
   exposed-modules:
       Lib.Coroutine
-      Lib.Draw
       Pong
       Sandbox
   other-modules:
