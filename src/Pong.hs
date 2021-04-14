@@ -36,23 +36,29 @@ type BallPos = Pos
 
 type Velocity = (Double, Double)
 
+data Player
+ = Player1
+ | Player2
+
 ballInitPos = (400, 200)
 
 ballSize = (8, 8)
 
-ballInitVel = (-1, -1)
+ballInitVel = (-0.1, -0.1)
 
-topWall = 10
+topWall = 0
 
-bottomWall = 590
+bottomWall = 600
 
 batSpeed = 1
 
 batSize = (10, 40)
 
-startPos = 200
+p1StartPos = 200
 
-gameUpdateHz = 60.0
+p2StartPos = 200
+
+gameUpdateHz = 60
 
 targetSecondsPerFrame = 1000 / gameUpdateHz
 
@@ -60,10 +66,10 @@ data BallBounce
  = HBounce
  | VBounce
 
-vecMul :: Int -> (Int, Int) -> (Int, Int)
+vecMul :: Num a => a -> (a, a) -> (a, a)
 vecMul c (x, y) = (x * c, y * c)
 
-vecAdd :: (Double, Double) -> (Double, Double) -> (Double, Double)
+vecAdd :: Num a => (a, a) -> (a, a) -> (a, a)
 vecAdd (a, b) (c, d) = (a + c, b + d)
 
 bounce :: Velocity -> BallBounce -> Velocity
@@ -80,14 +86,16 @@ wallBounce =
                        -< blPos
      constE VBounce -< collisionEvt
 
-batBounce :: Coroutine (PlayerPos, BallPos) (Event BallBounce)
+batBounce :: Coroutine (PlayerPos, PlayerPos, BallPos) (Event BallBounce)
 batBounce =
- proc (plPos, blPos) ->
-  do collisionEvt <- watch collision -< (plPos, blPos)
+ proc (pl1Pos, pl2Pos, blPos) ->
+  do collisionEvt <- watch collision -< (pl1Pos, pl2Pos, blPos)
      constE HBounce -< collisionEvt
 
-collision :: (PlayerPos, BallPos) -> Bool
-collision ((px, py), (bx, by)) = abs (px - bx) < w' && abs (py - by) < h'
+collision :: (PlayerPos, PlayerPos, BallPos) -> Bool
+collision ((p1x, p1y), (p2x, p2y), (bx, by)) =
+ (abs (p1x - bx) < w' && abs (p1y - by) < h') ||
+ (abs (p2x - bx) < w' && abs (p2y - by) < h')
   where
     w' = (bw + pw) / 2
     h' = (bh + ph) / 2
@@ -103,38 +111,52 @@ mkRect (x, y) (w, h) = ((x - w', y - h'), (w, h))
 game :: Coroutine Keyboard [Pong.Rect]
 game =
  proc kb ->
-  do plPos <- playerPos -< kb
-     blPos <- resettingBallPos -< plPos
-     returnA -< [mkRect plPos batSize, mkRect blPos ballSize]
+  do pl1Pos <- p1PlayerPos -< kb
+     pl2Pos <- p2PlayerPos -< kb
+     blPos <- resettingBallPos -< (pl1Pos, pl2Pos)
+     returnA -<
+       [mkRect pl1Pos batSize, mkRect pl2Pos batSize,
+        mkRect blPos ballSize]
 
-playerPos :: Coroutine Keyboard PlayerPos
-playerPos =
+p1PlayerPos :: Coroutine Keyboard PlayerPos
+p1PlayerPos =
  proc kb ->
-  do spd <- playerSpeed -< kb
-     y <- integrate startPos -< spd
+  do spd <- playerSpeed -< (Player1, kb)
+     y <- integrate p1StartPos -< spd
      returnA -< (10, y)
 
-playerSpeed :: Coroutine Keyboard Double
+p2PlayerPos :: Coroutine Keyboard PlayerPos
+p2PlayerPos =
+ proc kb ->
+  do spd <- playerSpeed -< (Player2, kb)
+     y <- integrate p2StartPos -< spd
+     returnA -< (790, y)
+
+playerSpeed :: Coroutine (Player, Keyboard) Double
 playerSpeed = arr keyboardDir
   where
-    keyboardDir kb
+    keyboardDir (Player1, kb)
+     | keyDown GLFW.Key'W kb = -batSpeed
+     | keyDown GLFW.Key'S kb = batSpeed
+     | otherwise = 0
+    keyboardDir (Player2, kb)
      | keyDown GLFW.Key'Up kb = -batSpeed
      | keyDown GLFW.Key'Down kb = batSpeed
      | otherwise = 0
 
-ballPos :: Coroutine PlayerPos BallPos
+ballPos :: Coroutine (PlayerPos, PlayerPos) BallPos
 ballPos =
- proc plPos ->
-  do rec bounces <- (batBounce -< (plPos, pos)) <++>
+ proc (pl1Pos, pl2Pos) ->
+  do rec bounces <- (batBounce -< (pl1Pos, pl2Pos, pos)) <++>
                       (wallBounce -< pos)
          vel <- scanE bounce ballInitVel -< bounces
          pos <- delay ballInitPos <<< scan vecAdd ballInitPos -< vel
      returnA -< pos
 
-resettingBallPos :: Coroutine PlayerPos BallPos
+resettingBallPos :: Coroutine (PlayerPos, PlayerPos) BallPos
 resettingBallPos =
- proc plPos ->
-  do rec pos <- restartWhen ballPos -< (plPos, reset)
+ proc (pl1Pos, pl2Pos) ->
+  do rec pos <- restartWhen ballPos -< ((pl1Pos, pl2Pos), reset)
          reset <- watch outOfBounds -< pos
      returnA -< pos
   where
@@ -191,9 +213,8 @@ appLoop window kb prevCounter prevRects gameLogic = do
   draw window newRects
   curCounter <- GLFW.getTimerValue
   elapsedTime <- getSecondsElapsed prevCounter curCounter
-  when (elapsedTime < targetSecondsPerFrame) $ do
-   print $ floor $ (targetSecondsPerFrame - elapsedTime) * 1000
-   threadDelay $ floor $ (targetSecondsPerFrame - elapsedTime) * 1000
+  when (elapsedTime < targetSecondsPerFrame) $
+   threadDelay $ floor $ targetSecondsPerFrame - elapsedTime
   GLFW.swapBuffers window
   appLoop window kb curCounter newRects gameLogic'
 
@@ -214,9 +235,7 @@ drawRect window (rPos, rSize) = do
   let (x, y) = rPos
   let (w, h) = rSize
   color3f 1 1 1
-  GL.rect
-   (GL.Vertex2 (x - w / 2) (y + h / 2))
-   (GL.Vertex2 (x + w / 2) (y - h / 2))
+  GL.rect (GL.Vertex2 x y) (GL.Vertex2 (x + w) (y + h))
 
 keyPressed :: IORef Keyboard -> GLFW.KeyCallback
 keyPressed kb win k _ GLFW.KeyState'Pressed _ = modifyIORef kb $ S.insert k
