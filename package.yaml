@@ -25,8 +25,8 @@ dependencies:
 - mtl
 - containers
 - time
-- netwire
-- sdl2
+- OpenGL
+- GLFW-b
 
 library:
   source-dirs: src
