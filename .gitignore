@@ -1,4 +1,6 @@
-.stack-work/
 *.swp
 *.lock
-*~
+.direnv
+artifacts
+build
+hie.yaml

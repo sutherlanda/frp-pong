@@ -1,35 +1,35 @@
 {-# LANGUAGE TupleSections #-}
 
 module Lib.Coroutine
-  ( Coroutine
-  , Event
-  , scan
-  , mapE
-  , scanE
-  , zipE
-  , filterE
-  , constE
-  , mergeE
-  , (<++>)
-  , withPrevious
-  , delay
-  , integrate
-  , derivate
-  , watch
-  , restartWhen
-  , step
-  ) where
+  ( Coroutine,
+    Event,
+    scan,
+    mapE,
+    scanE,
+    zipE,
+    filterE,
+    constE,
+    mergeE,
+    (<++>),
+    withPrevious,
+    delay,
+    integrate,
+    derivate,
+    watch,
+    restartWhen,
+    step,
+  )
+where
 
 import Control.Applicative
 import Control.Arrow
 import Control.Category
 import Data.List (foldl', mapAccumL)
-import Prelude hiding ((.), id)
+import Prelude hiding (id, (.))
 
-newtype Coroutine i o =
-  Coroutine
-    { runC :: i -> (o, Coroutine i o)
-    }
+newtype Coroutine i o = Coroutine
+  { runC :: i -> (o, Coroutine i o)
+  }
 
 instance Functor (Coroutine i) where
   fmap f co =
@@ -46,7 +46,7 @@ instance Applicative (Coroutine i) where
        in (f x, cof' <*> cox')
 
 instance Category Coroutine where
-  id = Coroutine (, id)
+  id = Coroutine (,id)
   cof . cog =
     Coroutine $ \i ->
       let (x, cog') = runC cog i
@@ -102,11 +102,11 @@ scanE f i = Coroutine $ step i
        in (a', scanE f a')
 
 mergeE ::
-     Coroutine i (Event e) -> Coroutine i (Event e) -> Coroutine i (Event e)
+  Coroutine i (Event e) -> Coroutine i (Event e) -> Coroutine i (Event e)
 mergeE = liftA2 (++)
 
 (<++>) ::
-     Coroutine i (Event e) -> Coroutine i (Event e) -> Coroutine i (Event e)
+  Coroutine i (Event e) -> Coroutine i (Event e) -> Coroutine i (Event e)
 (<++>) = liftA2 (++)
 
 withPrevious :: a -> Coroutine a (a, a)
@@ -149,7 +149,7 @@ accumSum = scan (+) 0
 
 evalList :: Coroutine i o -> [i] -> [o]
 evalList _ [] = []
-evalList co (x:xs) = o : evalList co' xs
+evalList co (x : xs) = o : evalList co' xs
   where
     (o, co') = runC co x
 
@@ -157,8 +157,9 @@ someFunc :: IO ()
 someFunc = do
   let i = intsFrom 5
       sumFrom = intsFrom 0 >>> accumSum
-   in do print $ evalList i [(), (), ()]
-         print $ evalList sumFrom [(), (), (), ()]
+   in do
+        print $ evalList i [(), (), ()]
+        print $ evalList sumFrom [(), (), (), ()]
 
 someFunc2 :: IO ()
 someFunc2 = do
